@@ -1,14 +1,17 @@
 {
   "name": "pwa-manifest-auditor",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Validate manifest fields, icons, display modes and offline shell expectations.",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test"
+    "lint": "node --check src/index.mjs && node --check bin/pwa-manifest-auditor.mjs",
+    "test": "node --test",
+    "check": "npm run lint && npm test"
   },
+  "bin": { "pwa-manifest-auditor": "bin/pwa-manifest-auditor.mjs" },
   "license": "MIT",
   "repository": {
     "type": "git",

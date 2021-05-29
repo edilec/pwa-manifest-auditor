@@ -1,0 +1,8 @@
+{
+  "name": "Synthetic app",
+  "short_name": "App",
+  "start_url": "/other/home",
+  "scope": "/app/",
+  "display": "standalone",
+  "icons": [{ "src": "/app/icon.png", "sizes": "192x192", "type": "image/png" }]
+}

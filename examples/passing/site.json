@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1",
+  "origin": "https://example.invalid",
+  "manifestPath": "/app/manifest.webmanifest",
+  "pagesComplete": true,
+  "assetsComplete": true,
+  "pages": ["/app/home"],
+  "assets": [
+    { "path": "/app/icon.png", "width": 192, "height": 192, "mime": "image/png" },
+    { "path": "/app/sw.js", "mime": "application/javascript" }
+  ],
+  "offline": { "complete": true, "serviceWorker": "/app/sw.js", "shellPaths": ["/app/home"], "navigationResult": "pass" }
+}
