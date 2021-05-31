@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateManifest, TOOL_ID } from '../src/index.mjs';
+import { evaluateManifest, TOOL_ID, LIMITS } from '../src/index.mjs';
 
 const manifest = { name: 'Synthetic app', short_name: 'App', start_url: '/app/home', scope: '/app/', display: 'standalone', icons: [{ src: '/app/icon.png', sizes: '192x192', type: 'image/png' }] };
 const site = { schemaVersion: '1', origin: 'https://example.invalid', manifestPath: '/app/manifest.webmanifest', pagesComplete: true, assetsComplete: true, pages: ['/app/home'], assets: [{ path: '/app/icon.png', width: 192, height: 192, mime: 'image/png' }, { path: '/app/sw.js', mime: 'application/javascript' }], offline: { complete: true, serviceWorker: '/app/sw.js', shellPaths: ['/app/home'], navigationResult: 'pass' } };
@@ -60,6 +60,48 @@ test('duplicate or ambiguous asset identity cannot prove icon exists', () => {
 test('relative start and scope resolve beside manifest without a false finding', () => {
   const r = evaluateManifest({ ...manifest, start_url: 'home', scope: './', icons: [{ ...manifest.icons[0], src: 'icon.png' }] }, site);
   assert.equal(r.status, 'pass'); assert.deepEqual(r.findings, []);
+});
+test('Unicode and equivalent percent-encoded inventory paths match URL references', () => {
+  const m = structuredClone(manifest), d = structuredClone(site);
+  m.start_url = '/app/caf\u00e9';
+  m.icons[0].src = '/app/ic\u00f4ne.png';
+  d.pages[0] = '/app/caf\u00e9';
+  d.assets[0].path = '/app/ic%C3%B4ne.png';
+  d.offline.shellPaths[0] = '/app/caf%C3%A9';
+  const r = evaluateManifest(m, d);
+  assert.equal(r.status, 'pass'); assert.deepEqual(r.findings, []);
+});
+test('unusable control or bidi inventory paths are incomplete evidence', () => {
+  for (const bad of ['/app/other\u0000', '/app/other\u202e', '/app/other%00']) {
+    const d = structuredClone(site); d.pages.push(bad);
+    const r = evaluateManifest(manifest, d);
+    assert.equal(r.status, 'incomplete');
+    assert.equal(r.findings[0].ruleId, 'site-invalid');
+  }
+  const d = structuredClone(site); d.assets[0].path = '/app/ic\u00f4ne\u202e.png';
+  assert.equal(evaluateManifest(manifest, d).status, 'incomplete');
+  d.assets[0].path = '/app/icon.png'; d.offline.shellPaths[0] = '/app/other%00';
+  assert.equal(evaluateManifest(manifest, d).status, 'incomplete');
+});
+test('equivalent encoded and Unicode page identities are incomplete duplicates', () => {
+  const d = structuredClone(site);
+  d.pages.push('/app/caf\u00e9', '/app/caf%C3%A9');
+  const r = evaluateManifest(manifest, d);
+  assert.equal(r.status, 'incomplete');
+  assert.ok(r.findings.some(f => f.ruleId === 'page-duplicate'));
+});
+test('JSON nesting accepts the declared depth and refuses the next level on either input', () => {
+  assert.equal(LIMITS.depth, 16);
+  for (const side of ['manifest', 'site']) {
+    const m = structuredClone(manifest), d = structuredClone(site);
+    let cursor = side === 'manifest' ? m : d;
+    for (let i = 0; i < LIMITS.depth; i++) { cursor.extra = {}; cursor = cursor.extra; }
+    assert.equal(evaluateManifest(m, d).status, 'pass');
+    cursor.extra = {};
+    const r = evaluateManifest(m, d);
+    assert.equal(r.status, 'incomplete');
+    assert.equal(r.findings[0].ruleId, 'depth-limit');
+  }
 });
 test('legal display name whitespace does not create a false incomplete result', () => {
   const r = evaluateManifest({ ...manifest, name: ' Synthetic app ' }, site);
