@@ -63,7 +63,7 @@ export function evaluateManifest(manifest, site, { now = () => performance.now()
   if (Object.hasOwn(site, 'complete') && site.complete !== true) return incomplete('site-invalid', 'Built-site inventory explicitly declares incomplete coverage.', '@site');
   if (manifest.icons.length > LIMITS.icons || site.pages.length > LIMITS.pages || site.assets.length > LIMITS.assets) return incomplete('record-limit', 'Manifest or inventory exceeds record limit.');
   if (site.pages.some(x => !localPath(x)) || site.assets.some(x => !record(x) || !localPath(x.path) || !label(x.mime) || (x.width !== undefined && (!Number.isInteger(x.width) || x.width < 1 || x.width > 10000)) || (x.height !== undefined && (!Number.isInteger(x.height) || x.height < 1 || x.height > 10000)))) return incomplete('site-invalid', 'Built-site inventory contains unusable paths or asset metadata.', '@site');
-  const pages = site.pages.map(canonicalPath), assets = site.assets.map(x => ({ ...x, canonical: canonicalPath(x.path) }));
+  const pages = site.pages.map(canonicalPath), assets = site.assets.map((x, ordinal) => ({ ...x, canonical: canonicalPath(x.path), ordinal }));
   if (!keysUnique(pages)) add(findings, 'page-duplicate', '@site', '/pages', 'Page inventory has duplicate identities.');
   if (!keysUnique(assets.map(x => x.canonical))) add(findings, 'asset-duplicate', '@site', '/assets', 'Asset inventory has duplicate identities.');
   if (!site.pagesComplete) add(findings, 'page-inventory-partial', '@site', '/pagesComplete', 'Page inventory is explicitly partial.');
@@ -88,7 +88,7 @@ export function evaluateManifest(manifest, site, { now = () => performance.now()
     if (matches.length > 1) continue;
     if (!matches.length) { if (site.assetsComplete) add(findings, 'icon-missing', '@manifest', `${pointer}/src`, 'Icon is absent from complete asset inventory.'); continue; }
     const asset = matches[0], [width, height] = icon.sizes.split('x').map(Number);
-    if (asset.width === undefined || asset.height === undefined) add(findings, 'icon-invalid', '@site', `/assets/${site.assets.indexOf(asset)}`, 'Icon dimensions were not exported.');
+    if (asset.width === undefined || asset.height === undefined) add(findings, 'icon-invalid', '@site', `/assets/${asset.ordinal}`, 'Icon dimensions were not exported.');
     else if (asset.width !== width || asset.height !== height) add(findings, 'icon-dimension-mismatch', '@manifest', `${pointer}/sizes`, 'Icon dimensions differ from local asset metadata.');
     if (asset.mime !== icon.type) add(findings, 'icon-type-mismatch', '@manifest', `${pointer}/type`, 'Icon media type differs from local asset metadata.');
   }

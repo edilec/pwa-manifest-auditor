@@ -36,6 +36,13 @@ test('declared icon size differs from exported local metadata', () => {
   const r = evaluateManifest(manifest, d);
   assert.equal(r.status, 'fail'); assert.equal(r.findings[0].ruleId, 'icon-dimension-mismatch');
 });
+test('missing icon dimensions report the real source asset ordinal', () => {
+  const d = structuredClone(site); delete d.assets[0].width;
+  const r = evaluateManifest(manifest, d);
+  assert.equal(r.status, 'incomplete');
+  assert.equal(r.findings[0].ruleId, 'icon-invalid');
+  assert.deepEqual(r.findings[0].location, { file: '@site', pointer: '/assets/0' });
+});
 test('manifest correctness alone does not assert an offline-capable verdict', () => {
   const d = structuredClone(site); delete d.offline;
   const r = evaluateManifest(manifest, d);
